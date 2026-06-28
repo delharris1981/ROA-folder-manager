@@ -163,9 +163,62 @@ All endpoints require `current_user_can('upload_files')` via `permission_callbac
 
 ---
 
+## GitHub & Release Workflow
+
+**Repository:** `https://github.com/delharris1981/ROA-folder-manager`
+
+### Versioning
+
+Version is stored in two canonical places and kept in sync by the release script:
+1. `Stable tag:` in `readme.txt`
+2. `Version:` in the plugin header comment in `media-folders.php`
+3. `MEDIA_FOLDERS_VERSION` constant in `media-folders.php`
+
+Semantic versioning (`MAJOR.MINOR.PATCH`). The release script bumps all three atomically.
+
+### Release Process (Subagent Build Approach)
+
+Releases are triggered by pushing a tag (`git tag v1.2.3 && git push --tags`). A GitHub Actions workflow fires and dispatches **three parallel subagent jobs**, then a final packaging job:
+
+```
+Tag pushed
+    │
+    ├── [Agent: test-php]    Run PHPUnit tests
+    ├── [Agent: test-js]     Run Jest tests
+    └── [Agent: build-js]    npm run build (compile React → build/)
+            │
+            └── [Agent: release] (waits for all three)
+                    ├── Bump version in media-folders.php + readme.txt
+                    ├── Commit version bump to main
+                    ├── Package plugin zip (exclude src/, node_modules/, tests/, .github/)
+                    └── Create GitHub Release with zip attached
+```
+
+Each parallel job is independent — PHP tests don't need the JS build, JS tests don't need PHP. Only the `release` job has a `needs:` dependency on all three.
+
+### GitHub Actions Files
+
+```
+.github/
+└── workflows/
+    ├── release.yml     # Tag-triggered: parallel test+build → version bump → package → GH release
+    └── ci.yml          # PR/push to main: parallel test-php + test-js (no build, no release)
+```
+
+**`release.yml` jobs:**
+- `test-php` — `composer install` + `phpunit`
+- `test-js` — `npm ci` + `npm test`
+- `build-js` — `npm ci` + `npm run build`
+- `release` — needs all three; bumps version, commits, zips, creates GitHub Release via `gh release create`
+
+**Version bump in `release` job:** The tag name (e.g., `v1.2.3`) is stripped of the `v` prefix and written into `media-folders.php` header and `readme.txt` via `sed`. The commit is pushed back to `main` before packaging.
+
+---
+
 ## Out of Scope (v1)
 
 - Multisite support
 - Bulk move of multiple attachments
 - Post content URL replacement beyond 500 posts per move (logged, not errored)
 - Folder permissions (all managed folders inherit `uploads/` permissions)
+- WordPress.org SVN deployment (GitHub releases only for now)
