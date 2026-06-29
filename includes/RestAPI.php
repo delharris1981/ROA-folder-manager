@@ -106,20 +106,16 @@ class RestAPI {
 		$new_path = ( '.' === $parent ) ? $new_name : $parent . '/' . $new_name;
 
 		// Update attachment meta for every file that lived under old_path.
-		$attachments = get_posts( [
-			'post_type'      => 'attachment',
-			'posts_per_page' => -1,
-			'fields'         => 'ids',
-			'meta_query'     => [
-				[
-					'key'     => '_wp_attached_file',
-					'value'   => $old_path . '/',
-					'compare' => 'LIKE',
-				],
-			],
-		] );
+		global $wpdb;
+		$like           = $wpdb->esc_like( ltrim( $old_path, '/' ) . '/' );
+		$attachment_ids = $wpdb->get_col( $wpdb->prepare(
+			"SELECT post_id FROM {$wpdb->postmeta}
+			 WHERE meta_key = '_wp_attached_file'
+			   AND meta_value LIKE %s",
+			$like . '%'
+		) );
 
-		foreach ( $attachments as $id ) {
+		foreach ( $attachment_ids as $id ) {
 			$old_file = get_post_meta( $id, '_wp_attached_file', true );
 			$new_file = $new_path . '/' . substr( $old_file, strlen( $old_path ) + 1 );
 
@@ -150,38 +146,45 @@ class RestAPI {
 		$action = $request->get_param( 'action' );
 		$dest   = $request->get_param( 'destination_path' );
 
-		$attachments = get_posts( [
-			'post_type'      => 'attachment',
-			'posts_per_page' => -1,
-			'fields'         => 'ids',
-			'meta_query'     => [
-				[
-					'key'     => '_wp_attached_file',
-					'value'   => $path . '/',
-					'compare' => 'LIKE',
-				],
-			],
-		] );
+		global $wpdb;
+		$like           = $wpdb->esc_like( ltrim( $path, '/' ) . '/' );
+		$attachment_ids = $wpdb->get_col( $wpdb->prepare(
+			"SELECT post_id FROM {$wpdb->postmeta}
+			 WHERE meta_key = '_wp_attached_file'
+			   AND meta_value LIKE %s",
+			$like . '%'
+		) );
 
 		if ( 'move' === $action ) {
-			foreach ( $attachments as $id ) {
+			foreach ( $attachment_ids as $id ) {
 				$result = $this->attachment_mover->move( $id, $dest );
 				if ( is_wp_error( $result ) ) {
 					return $result;
 				}
 			}
 		} else {
-			foreach ( $attachments as $id ) {
+			foreach ( $attachment_ids as $id ) {
 				wp_delete_attachment( $id, true );
 			}
 		}
 
-		$result = $this->folder_manager->delete_empty( $path );
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
+		$upload_dir = wp_upload_dir();
+		$abs_path   = $upload_dir['basedir'] . '/' . ltrim( $path, '/' );
+		$this->delete_dir_recursive( $abs_path );
 
 		return new \WP_REST_Response( [ 'deleted' => true ], 200 );
+	}
+
+	private function delete_dir_recursive( string $abs_path ): void {
+		if ( ! is_dir( $abs_path ) ) {
+			return;
+		}
+		$entries = array_diff( scandir( $abs_path ), [ '.', '..' ] );
+		foreach ( $entries as $entry ) {
+			$full = $abs_path . '/' . $entry;
+			is_dir( $full ) ? $this->delete_dir_recursive( $full ) : @unlink( $full );
+		}
+		@rmdir( $abs_path );
 	}
 
 	public function set_active_folder( \WP_REST_Request $request ): \WP_REST_Response {

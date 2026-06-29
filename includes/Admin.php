@@ -8,17 +8,27 @@ class Admin {
 
 	public function register_hooks(): void {
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
+		add_action( 'wp_enqueue_media', [ $this, 'enqueue_for_modal' ] );
 		add_filter( 'ajax_query_attachments_args', [ $this, 'filter_attachments_by_folder' ] );
 		add_filter( 'upload_dir', [ $this, 'redirect_upload_dir' ] );
 	}
 
 	public function enqueue_scripts( string $hook ): void {
-		if ( 'upload.php' !== $hook && ! did_action( 'wp_enqueue_media' ) ) {
+		if ( 'upload.php' !== $hook ) {
 			return;
 		}
+		$this->enqueue_assets();
+	}
 
+	public function enqueue_for_modal(): void {
+		$this->enqueue_assets();
+	}
+
+	private function enqueue_assets(): void {
 		$asset_file = MEDIA_FOLDERS_PATH . 'build/index.asset.php';
-		$asset      = file_exists( $asset_file ) ? require $asset_file : [ 'dependencies' => [], 'version' => MEDIA_FOLDERS_VERSION ];
+		$asset      = file_exists( $asset_file )
+			? require $asset_file
+			: [ 'dependencies' => [], 'version' => MEDIA_FOLDERS_VERSION ];
 
 		wp_enqueue_script(
 			'roa-folder-manager',
@@ -69,13 +79,22 @@ class Admin {
 			return $query;
 		}
 
-		$query['meta_query'] = [
-			[
-				'key'     => '_wp_attached_file',
-				'value'   => $folder . '/',
-				'compare' => 'LIKE',
-			],
-		];
+		global $wpdb;
+		$like     = $wpdb->esc_like( $folder . '/' );
+		$post_ids = $wpdb->get_col( $wpdb->prepare(
+			"SELECT post_id FROM {$wpdb->postmeta}
+			 WHERE meta_key = '_wp_attached_file'
+			   AND meta_value LIKE %s",
+			$like . '%'
+		) );
+
+		unset( $query['meta_query'] );
+
+		if ( empty( $post_ids ) ) {
+			$query['post__in'] = [ 0 ];
+		} else {
+			$query['post__in'] = array_map( 'intval', $post_ids );
+		}
 
 		return $query;
 	}
