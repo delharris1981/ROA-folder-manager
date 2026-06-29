@@ -7,6 +7,8 @@
         "test": "wp-scripts test-unit-js"
     },
     "devDependencies": {
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^16.3.2",
         "@wordpress/scripts": "^30.0"
     }
 }
