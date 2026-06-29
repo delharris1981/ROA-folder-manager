@@ -1,0 +1,12 @@
+{
+    "name": "roa-folder-manager",
+    "version": "1.0.0",
+    "scripts": {
+        "build": "wp-scripts build",
+        "start": "wp-scripts start",
+        "test": "wp-scripts test-unit-js"
+    },
+    "devDependencies": {
+        "@wordpress/scripts": "^30.0"
+    }
+}

@@ -1,0 +1,17 @@
+{
+    "name": "delharris1981/roa-folder-manager",
+    "description": "WordPress plugin for real on-disk media folder management",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "autoload": {
+        "psr-4": {
+            "MediaFolders\\": "includes/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
+    }
+}
