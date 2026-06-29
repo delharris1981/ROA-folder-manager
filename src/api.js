@@ -33,6 +33,12 @@ export const deleteFolder = ( path, action, destinationPath = '' ) =>
         body: JSON.stringify( { path, action, destination_path: destinationPath } ),
     } );
 
+export const setActiveFolder = ( folderPath ) =>
+    apiFetch( '/active-folder', {
+        method: 'POST',
+        body: JSON.stringify( { path: folderPath } ),
+    } );
+
 export const moveAttachment = ( id, destinationPath ) =>
     apiFetch( `/attachments/${ id }/move`, {
         method: 'POST',

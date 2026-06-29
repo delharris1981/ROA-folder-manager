@@ -9,6 +9,7 @@ class Admin {
 	public function register_hooks(): void {
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_scripts' ] );
 		add_filter( 'ajax_query_attachments_args', [ $this, 'filter_attachments_by_folder' ] );
+		add_filter( 'upload_dir', [ $this, 'redirect_upload_dir' ] );
 	}
 
 	public function enqueue_scripts( string $hook ): void {
@@ -38,6 +39,22 @@ class Admin {
 			'nonce'    => wp_create_nonce( 'wp_rest' ),
 			'restBase' => rest_url( 'media-folders/v1' ),
 		] );
+	}
+
+	public function redirect_upload_dir( array $dirs ): array {
+		$folder = get_transient( 'media_folders_active_' . get_current_user_id() );
+
+		if ( ! $folder || str_contains( $folder, '..' ) ) {
+			return $dirs;
+		}
+
+		$folder = trim( $folder, '/' );
+
+		$dirs['subdir'] = '/' . $folder;
+		$dirs['path']   = $dirs['basedir'] . '/' . $folder;
+		$dirs['url']    = $dirs['baseurl'] . '/' . $folder;
+
+		return $dirs;
 	}
 
 	public function filter_attachments_by_folder( array $query ): array {

@@ -3,7 +3,7 @@ import { Notice, Spinner } from '@wordpress/components';
 import FolderTree from './FolderTree';
 import AddFolderButton from './AddFolderButton';
 import DeleteFolderDialog from './DeleteFolderDialog';
-import { getFolders, createFolder, renameFolder, deleteFolder, moveAttachment } from '../api';
+import { getFolders, createFolder, renameFolder, deleteFolder, moveAttachment, setActiveFolder } from '../api';
 
 export default function FolderPanel() {
     const [ tree, setTree ]                  = useState( [] );
@@ -22,6 +22,8 @@ export default function FolderPanel() {
     useEffect( () => { loadTree(); }, [] );
 
     function handleSelect( folderPath ) {
+        setActiveFolder( folderPath ).catch( () => {} );
+
         if ( ! window.wp?.media?.frame ) return;
         const library = window.wp.media.frame.state().get( 'library' );
         if ( library ) {

@@ -48,6 +48,15 @@ class RestAPI {
 			],
 		] );
 
+		register_rest_route( 'media-folders/v1', '/active-folder', [
+			'methods'             => \WP_REST_Server::CREATABLE,
+			'callback'            => [ $this, 'set_active_folder' ],
+			'permission_callback' => [ $this, 'check_permission' ],
+			'args'                => [
+				'path' => [ 'required' => true, 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ],
+			],
+		] );
+
 		register_rest_route( 'media-folders/v1', '/attachments/(?P<id>\d+)/move', [
 			'methods'             => \WP_REST_Server::CREATABLE,
 			'callback'            => [ $this, 'move_attachment' ],
@@ -173,6 +182,15 @@ class RestAPI {
 		}
 
 		return new \WP_REST_Response( [ 'deleted' => true ], 200 );
+	}
+
+	public function set_active_folder( \WP_REST_Request $request ): \WP_REST_Response {
+		$path = $request->get_param( 'path' );
+		if ( str_contains( $path, '..' ) ) {
+			return new \WP_REST_Response( [ 'error' => 'Invalid path.' ], 400 );
+		}
+		set_transient( 'media_folders_active_' . get_current_user_id(), $path, 300 );
+		return new \WP_REST_Response( [ 'active' => $path ], 200 );
 	}
 
 	public function move_attachment( \WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
