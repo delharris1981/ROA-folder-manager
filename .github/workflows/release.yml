@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  test-php:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          coverage: none
+      - run: composer install --no-progress --no-interaction
+      - run: vendor/bin/phpunit
+
+  test-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test -- --watchAll=false
+
+  build-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: build/
+
+  release:
+    needs: [test-php, test-js, build-js]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Download compiled build
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: build/
+
+      - name: Extract version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - name: Bump version in plugin file and readme
+        run: |
+          sed -i "s/^ \* Version:.*/ * Version:           ${{ env.VERSION }}/" media-folders.php
+          sed -i "s/define( 'MEDIA_FOLDERS_VERSION', '.*' );/define( 'MEDIA_FOLDERS_VERSION', '${{ env.VERSION }}' );/" media-folders.php
+          sed -i "s/^Stable tag:.*/Stable tag: ${{ env.VERSION }}/" readme.txt
+
+      - name: Commit version bump to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add media-folders.php readme.txt
+          git commit -m "chore: bump version to ${{ env.VERSION }} [skip ci]"
+          git push origin HEAD:main
+
+      - name: Package plugin zip
+        run: |
+          mkdir -p /tmp/roa-folder-manager
+          rsync -a . /tmp/roa-folder-manager/ \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='src' \
+            --exclude='node_modules' \
+            --exclude='tests' \
+            --exclude='vendor' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            --exclude='composer.json' \
+            --exclude='composer.lock' \
+            --exclude='phpunit.xml' \
+            --exclude='*.md' \
+            --exclude='.gitignore'
+          cd /tmp && zip -r roa-folder-manager.zip roa-folder-manager/
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            /tmp/roa-folder-manager.zip \
+            --title "ROA Folder Manager ${{ github.ref_name }}" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
