@@ -23,6 +23,11 @@ define( 'MEDIA_FOLDERS_VERSION', '1.0.0' );
 define( 'MEDIA_FOLDERS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'MEDIA_FOLDERS_URL', plugin_dir_url( __FILE__ ) );
 
-require_once MEDIA_FOLDERS_PATH . 'vendor/autoload.php';
+spl_autoload_register( function ( string $class ): void {
+    if ( strpos( $class, 'MediaFolders\\' ) !== 0 ) {
+        return;
+    }
+    require_once MEDIA_FOLDERS_PATH . 'includes/' . substr( $class, 13 ) . '.php';
+} );
 
 ( new MediaFolders\Plugin() )->init();
