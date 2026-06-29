@@ -1,18 +1,19 @@
 import FolderNode from './FolderNode';
 
-export default function FolderTree( { tree, onSelect, onMove, onRename, onDelete, depth = 0 } ) {
+export default function FolderTree( { tree, selectedPath, renamingPath, onSelect, onMove, onRename, depth = 0 } ) {
 	if ( ! tree || ! tree.length ) return null;
 
 	return (
-		<ul style={ { margin: 0, padding: 0 } }>
+		<ul className="mf-tree-list">
 			{ tree.map( ( node ) => (
 				<FolderNode
 					key={ node.path }
 					node={ node }
+					selectedPath={ selectedPath }
+					renamingPath={ renamingPath }
 					onSelect={ onSelect }
 					onMove={ onMove }
 					onRename={ onRename }
-					onDelete={ onDelete }
 					depth={ depth }
 				/>
 			) ) }

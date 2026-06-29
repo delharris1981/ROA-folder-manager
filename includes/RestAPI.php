@@ -76,7 +76,27 @@ class RestAPI {
 	}
 
 	public function get_folders(): \WP_REST_Response {
-		return new \WP_REST_Response( $this->folder_manager->get_tree(), 200 );
+		global $wpdb;
+		$tree  = $this->folder_manager->get_tree();
+		$paths = $wpdb->get_col(
+			"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file'"
+		);
+		return new \WP_REST_Response( $this->add_counts( $tree, $paths ), 200 );
+	}
+
+	private function add_counts( array $nodes, array $paths ): array {
+		foreach ( $nodes as &$node ) {
+			$prefix        = $node['path'] . '/';
+			$plen          = strlen( $prefix );
+			$node['count'] = count( array_filter( $paths, function ( string $p ) use ( $prefix, $plen ): bool {
+				return str_starts_with( $p, $prefix ) && strpos( $p, '/', $plen ) === false;
+			} ) );
+			if ( ! empty( $node['children'] ) ) {
+				$node['children'] = $this->add_counts( $node['children'], $paths );
+			}
+		}
+		unset( $node );
+		return $nodes;
 	}
 
 	public function create_folder( \WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
