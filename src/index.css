@@ -1,0 +1,18 @@
+#media-folders-panel {
+    width: 220px;
+    flex-shrink: 0;
+    border-right: 1px solid #dcdcde;
+    padding: 12px 8px;
+    overflow-y: auto;
+    background: #f6f7f7;
+}
+
+.media-folders-layout {
+    display: flex;
+    align-items: flex-start;
+}
+
+.media-folders-layout #wp-media-grid {
+    flex: 1;
+    min-width: 0;
+}
