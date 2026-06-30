@@ -16,4 +16,33 @@ if ( grid ) {
     wrapper.appendChild( grid );
 
     render( <FolderPanel />, panel );
+
+    // Make attachment thumbnails draggable so they can be dropped onto folders.
+    // WP renders .attachment[data-id] elements dynamically via Backbone; use a
+    // MutationObserver so newly loaded items are captured too.
+    function makeDraggable( el ) {
+        if ( el.dataset.mfDrag ) return; // already set up
+        el.dataset.mfDrag = '1';
+        el.draggable = true;
+        el.addEventListener( 'dragstart', ( e ) => {
+            e.dataTransfer.setData( 'text/plain', el.dataset.id );
+            e.dataTransfer.effectAllowed = 'move';
+        } );
+    }
+
+    // Handle items already in the DOM at mount time
+    grid.querySelectorAll( '.attachment[data-id]' ).forEach( makeDraggable );
+
+    // Handle items added by WP's infinite scroll / filter changes
+    new MutationObserver( ( mutations ) => {
+        for ( const mutation of mutations ) {
+            mutation.addedNodes.forEach( ( node ) => {
+                if ( node.nodeType !== 1 ) return;
+                if ( node.matches( '.attachment[data-id]' ) ) {
+                    makeDraggable( node );
+                }
+                node.querySelectorAll?.( '.attachment[data-id]' ).forEach( makeDraggable );
+            } );
+        }
+    } ).observe( grid, { childList: true, subtree: true } );
 }
