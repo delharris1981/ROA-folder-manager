@@ -16,19 +16,6 @@ if ( grid ) {
 
     render( <FolderPanel />, panel );
 
-    // While dragging an attachment, WP's file-upload handler intercepts
-    // dragenter/dragover on the whole page and shows a full-screen upload overlay.
-    // We suppress that by intercepting in capture phase at document level for any
-    // drag that: (a) carries no files, and (b) is not targeting our folder panel.
-    // Events targeting the panel are left alone so folder-row drop zones still work.
-    function suppressWpUploadOverlay( e ) {
-        const hasFiles = e.dataTransfer &&
-            Array.from( e.dataTransfer.types ).includes( 'Files' );
-        if ( ! hasFiles && ! panel.contains( e.target ) ) {
-            e.stopPropagation();
-        }
-    }
-
     function makeDraggable( el ) {
         if ( el.dataset.mfDrag ) return;
         el.dataset.mfDrag = '1';
@@ -40,17 +27,12 @@ if ( grid ) {
             e.dataTransfer.effectAllowed = 'move';
             const thumb = el.querySelector( 'img' );
             if ( thumb ) e.dataTransfer.setDragImage( thumb, 16, 16 );
-
-            // Install capture-phase suppressor for the duration of this drag
-            // window capture fires before document capture — WP registered its
-            // handler on document, so this intercepts first and WP never sees it.
-            window.addEventListener( 'dragenter', suppressWpUploadOverlay, true );
-            window.addEventListener( 'dragover',  suppressWpUploadOverlay, true );
+            // CSS hides .uploader-window while this class is present (see index.css)
+            document.body.classList.add( 'mf-dragging' );
         } );
 
         el.addEventListener( 'dragend', () => {
-            window.removeEventListener( 'dragenter', suppressWpUploadOverlay, true );
-            window.removeEventListener( 'dragover',  suppressWpUploadOverlay, true );
+            document.body.classList.remove( 'mf-dragging' );
         } );
     }
 
