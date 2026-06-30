@@ -42,13 +42,15 @@ if ( grid ) {
             if ( thumb ) e.dataTransfer.setDragImage( thumb, 16, 16 );
 
             // Install capture-phase suppressor for the duration of this drag
-            document.addEventListener( 'dragenter', suppressWpUploadOverlay, true );
-            document.addEventListener( 'dragover',  suppressWpUploadOverlay, true );
+            // window capture fires before document capture — WP registered its
+            // handler on document, so this intercepts first and WP never sees it.
+            window.addEventListener( 'dragenter', suppressWpUploadOverlay, true );
+            window.addEventListener( 'dragover',  suppressWpUploadOverlay, true );
         } );
 
         el.addEventListener( 'dragend', () => {
-            document.removeEventListener( 'dragenter', suppressWpUploadOverlay, true );
-            document.removeEventListener( 'dragover',  suppressWpUploadOverlay, true );
+            window.removeEventListener( 'dragenter', suppressWpUploadOverlay, true );
+            window.removeEventListener( 'dragover',  suppressWpUploadOverlay, true );
         } );
     }
 
