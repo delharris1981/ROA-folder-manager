@@ -25,8 +25,13 @@ if ( grid ) {
         el.dataset.mfDrag = '1';
         el.draggable = true;
         el.addEventListener( 'dragstart', ( e ) => {
+            // Stop WP's own dragstart handler (lasso-select mode) from firing
+            e.stopPropagation();
             e.dataTransfer.setData( 'text/plain', el.dataset.id );
             e.dataTransfer.effectAllowed = 'move';
+            // Use the thumbnail img as drag ghost instead of the whole card
+            const thumb = el.querySelector( 'img' );
+            if ( thumb ) e.dataTransfer.setDragImage( thumb, 16, 16 );
         } );
     }
 
